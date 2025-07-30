@@ -71,12 +71,35 @@ sudo ninja -C build install
 cd ~
 rm -rf /tmp/mako
 
-echo "🎨 Setting up theme..."
-mkdir -p ~/.config
-git clone https://github.com/adi1090x/rofi.git /tmp/rofi
+echo "🎨 Creating Wofi theme..."
 mkdir -p ~/.config/wofi
-cp -r /tmp/rofi/files/shared/themes/blue ~/.config/wofi/theme
-rm -rf /tmp/rofi
+cat <<EOF > ~/.config/wofi/style.css
+window {
+    margin: 0px;
+    border: 2px solid #306998;
+    background-color: #1e1e2e;
+}
+
+#input {
+    margin: 5px;
+    border: none;
+    background-color: #313244;
+    color: #ffffff;
+}
+
+#entry {
+    padding: 5px;
+    margin: 2px;
+    border: none;
+    background-color: transparent;
+    color: #ffffff;
+}
+
+#entry:selected {
+    background-color: #306998;
+    color: #ffffff;
+}
+EOF
 
 echo "🎛 Configuring GTK theme..."
 mkdir -p ~/.config/gtk-3.0
