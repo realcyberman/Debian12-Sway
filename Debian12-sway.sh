@@ -187,7 +187,20 @@ EOF
 echo "🌐 Installing Firefox..."
 sudo apt install -y firefox-esr
 
+
+echo "🧩 Adding Ubuntu Sway Remix PPA packages..."
+sudo apt install -y software-properties-common
+
+# Add Ubuntu Sway Remix PPA (note: this is unofficial on Debian and may require tweaks)
+sudo add-apt-repository -y ppa:samoilov-lex/ubuntu-sway-remix
+sudo apt update
+
+# Install matching tools
+sudo apt install -y sway-input-config sway-systemd nwg-drawer nwg-wrapper \
+  rofi-wayland cliphist bluetuith qt5-style-kvantum yaru-theme-icon yaru-cursor-theme
+
 echo "💻 Optimizing for Dell XPS 9305..."
+
 sudo apt install -y tlp thermald
 sudo systemctl enable tlp.service
 sudo systemctl start tlp.service
