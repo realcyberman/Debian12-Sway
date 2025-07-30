@@ -192,8 +192,6 @@ sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 1D8A92449CDBFA71
 sudo apt update
 
 # Install matching tools
-sudo apt install -y gtkgreet sway-input-config sway-systemd nwg-drawer nwg-wrapper \
-  rofi-wayland cliphist bluetuith qt5-style-kvantum yaru-theme-icon yaru-cursor-theme
 
 echo "💻 Optimizing for Dell XPS 9305..."
 
