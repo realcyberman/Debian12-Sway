@@ -6,7 +6,7 @@ sudo apt update && sudo apt full-upgrade -y
 
 echo "📦 Installing core packages..."
 sudo apt install -y \
-  sway waybar mako foot wofi grim slurp wl-clipboard \
+  sway waybar foot wofi grim slurp wl-clipboard \
   light pipewire wireplumber pavucontrol \
   thunar thunar-archive-plugin file-roller \
   lxappearance imv vlc unzip curl git wget \
@@ -25,8 +25,6 @@ sudo apt install -y firmware-linux firmware-linux-nonfree
 
 echo "🖥️ Installing GDM3..."
 sudo apt install -y gdm3
-
-echo "🔌 Enabling GDM3 on boot..."
 sudo systemctl enable gdm3
 
 echo "🧠 Setting default session to Sway..."
@@ -47,6 +45,20 @@ sudo bash -c "cat <<EOF > /etc/gdm3/custom.conf
 AutomaticLoginEnable=true
 AutomaticLogin=$USER
 EOF"
+
+echo "🛠️ Installing mako build dependencies..."
+sudo apt install -y meson ninja-build scdoc pkg-config \
+  libwayland-dev libxkbcommon-dev libpixman-1-dev \
+  libsystemd-dev libdbus-1-dev libpango1.0-dev
+
+echo "🧱 Cloning and building mako from source..."
+git clone https://github.com/emersion/mako.git /tmp/mako
+cd /tmp/mako
+meson setup build
+ninja -C build
+sudo ninja -C build install
+cd ~
+rm -rf /tmp/mako
 
 echo "🎨 Setting up theme..."
 mkdir -p ~/.config
@@ -102,7 +114,7 @@ cp -r /tmp/ubuntu-sway-remix/themes/* ~/.themes/ || true
 cp -r /tmp/ubuntu-sway-remix/icons/* ~/.icons/ || true
 
 echo "🧹 Cleaning up..."
-rm -rf /tmp/rofi /tmp/ubuntu-sway-remix
+rm -rf /tmp/ubuntu-sway-remix
 sudo apt autoremove -y
 
 echo "✅ Installation complete! Reboot to enter Sway via GDM."
