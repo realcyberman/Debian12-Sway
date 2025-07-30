@@ -28,9 +28,7 @@ sudo sed -i 's/main/main contrib non-free non-free-firmware/g' /etc/apt/sources.
 sudo apt update
 sudo apt install -y firmware-linux firmware-linux-nonfree
 
-echo "⬇️ Building and installing gtkgreet..."
-cargo install --locked gtkgreet
-sudo install -Dm755 ~/.cargo/bin/gtkgreet /usr/local/bin/gtkgreet
+# gtkgreet will be installed from the PPA below
 
 echo "🔧 Configuring greetd to auto-launch sway..."
 sudo mkdir -p /etc/greetd
