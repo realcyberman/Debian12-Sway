@@ -79,14 +79,12 @@ window {
     border: 2px solid #306998;
     background-color: #1e1e2e;
 }
-
 #input {
     margin: 5px;
     border: none;
     background-color: #313244;
     color: #ffffff;
 }
-
 #entry {
     padding: 5px;
     margin: 2px;
@@ -94,7 +92,6 @@ window {
     background-color: transparent;
     color: #ffffff;
 }
-
 #entry:selected {
     background-color: #306998;
     color: #ffffff;
@@ -114,41 +111,73 @@ echo "🖼 Setting Debian wallpaper..."
 mkdir -p ~/Pictures
 wget -O ~/Pictures/debian-wallpaper.jpg "https://wiki.debian.org/DebianArt/Themes/Emerald?action=AttachFile&do=get&target=Emerald_login_1920x1080.png"
 
-echo "🧩 Setting up basic Sway config..."
+echo "🧩 Creating Sway config..."
 mkdir -p ~/.config/sway
 cat <<EOF > ~/.config/sway/config
-exec dbus-run-session -- sway
+set \$mod Mod4
+
 output * bg ~/Pictures/debian-wallpaper.jpg fill
+
+exec mako
+exec waybar
+
 bindsym \$mod+Return exec foot
 bindsym \$mod+d exec wofi --show drun
+bindsym \$mod+q kill
+bindsym \$mod+Shift+e exit
+
+floating_modifier \$mod
+focus_follows_mouse yes
+
+for_window [class=".*"] border pixel 2
 EOF
+
+echo "🧩 Creating Waybar config..."
+mkdir -p ~/.config/waybar
+cat <<EOF > ~/.config/waybar/config.jsonc
+{
+  "layer": "top",
+  "position": "top",
+  "modules-left": ["sway/workspaces"],
+  "modules-center": ["clock"],
+  "modules-right": ["pulseaudio", "battery", "network"],
+  "clock": { "format": "%a %b %d, %H:%M" },
+  "pulseaudio": { "format": " {volume}%" },
+  "battery": { "format": "{capacity}%", "format-charging": " {capacity}%" },
+  "network": { "format": "{ifname}   {signalStrength}%" }
+}
+EOF
+
+echo "🧩 Creating Waybar style..."
+cat <<EOF > ~/.config/waybar/style.css
+* {
+  font-family: "Noto Sans", sans-serif;
+  font-size: 14px;
+  color: white;
+}
+window {
+  background-color: #1e1e2e;
+}
+#workspaces button {
+  padding: 5px;
+  border: none;
+  background: transparent;
+}
+#workspaces button.focused {
+  background: #306998;
+}
+EOF
+
+echo "📦 Installing Flatpak..."
+sudo apt install -y flatpak gnome-software-plugin-flatpak
+sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
 echo "💻 Optimizing for Dell XPS 9305..."
 sudo apt install -y tlp thermald
 sudo systemctl enable tlp.service
 sudo systemctl start tlp.service
 
-echo "📦 Installing Flatpak..."
-sudo apt install -y flatpak gnome-software-plugin-flatpak
-sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
-echo "🔁 Cloning Ubuntu Sway Remix configuration..."
-git clone https://github.com/ubuntu-sway/ubuntu-sway /tmp/ubuntu-sway-remix
-
-echo "📂 Applying Sway, Waybar, and Mako configs..."
-mkdir -p ~/.config/sway ~/.config/waybar ~/.config/mako
-cp -r /tmp/ubuntu-sway-remix/config/sway/* ~/.config/sway/
-cp -r /tmp/ubuntu-sway-remix/config/waybar/* ~/.config/waybar/
-cp -r /tmp/ubuntu-sway-remix/config/mako/* ~/.config/mako/
-
-echo "🎨 Applying GTK theme and styles from Remix..."
-mkdir -p ~/.config/gtk-3.0 ~/.themes ~/.icons
-cp -r /tmp/ubuntu-sway-remix/config/gtk-3.0/* ~/.config/gtk-3.0/ || true
-cp -r /tmp/ubuntu-sway-remix/themes/* ~/.themes/ || true
-cp -r /tmp/ubuntu-sway-remix/icons/* ~/.icons/ || true
-
 echo "🧹 Cleaning up..."
-rm -rf /tmp/ubuntu-sway-remix
 sudo apt autoremove -y
 
 echo "✅ Installation complete! Reboot to enter Sway via GDM."
