@@ -4,7 +4,7 @@ set -e
 echo "🔧 Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
-echo "📦 Installing core packages..."
+echo "📦 Installing core system packages..."
 sudo apt install -y \
   sway waybar foot wofi grim slurp wl-clipboard \
   light pipewire wireplumber pavucontrol \
@@ -16,7 +16,7 @@ sudo apt install -y \
   xdg-desktop-portal file dbus-user-session network-manager \
   policykit-1 systemd-container bluez blueman \
   firmware-iwlwifi intel-media-va-driver \
-  mesa-va-drivers vainfo mesa-utils
+  mesa-va-drivers vainfo mesa-utils build-essential
 
 echo "🔧 Enabling contrib/non-free repos for firmware..."
 sudo sed -i 's/main/main contrib non-free non-free-firmware/g' /etc/apt/sources.list
@@ -46,10 +46,16 @@ AutomaticLoginEnable=true
 AutomaticLogin=$USER
 EOF"
 
-echo "⬇️ Downloading wayland-protocols 1.32 from Debian Testing..."
+echo "⬇️ Downloading and building wayland-protocols 1.32..."
 cd /tmp
-wget http://ftp.debian.org/debian/pool/main/w/wayland-protocols/wayland-protocols_1.32-1_all.deb
-sudo dpkg -i wayland-protocols_1.32-1_all.deb
+wget https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.32/wayland-protocols-1.32.tar.gz
+tar -xzf wayland-protocols-1.32.tar.gz
+cd wayland-protocols-1.32
+meson setup build
+ninja -C build
+sudo ninja -C build install
+cd ~
+rm -rf /tmp/wayland-protocols*
 
 echo "🛠️ Installing mako build dependencies..."
 sudo apt install -y meson ninja-build scdoc pkg-config cmake \
@@ -119,7 +125,7 @@ cp -r /tmp/ubuntu-sway-remix/themes/* ~/.themes/ || true
 cp -r /tmp/ubuntu-sway-remix/icons/* ~/.icons/ || true
 
 echo "🧹 Cleaning up..."
-rm -rf /tmp/wayland-protocols_1.32-1_all.deb /tmp/ubuntu-sway-remix
+rm -rf /tmp/ubuntu-sway-remix
 sudo apt autoremove -y
 
 echo "✅ Installation complete! Reboot to enter Sway via GDM."
