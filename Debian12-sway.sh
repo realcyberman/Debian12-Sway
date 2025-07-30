@@ -51,12 +51,8 @@ bindsym Mod4+shift+e exec swaynag \
 EOF
 
 echo "👤 Creating 'greeter' user for greetd..."
-sudo useradd -m -G video,input -s /bin/bash greeter || true
-if id "greeter" &>/dev/null; then
-  sudo passwd -d greeter
-else
-  echo "⚠️ User 'greeter' could not be created."
-fi
+sudo useradd -m -G video,input,seat -s /bin/bash greeter || true
+sudo passwd -d greeter
 
 echo "🟢 Enabling greetd..."
 sudo systemctl enable greetd
@@ -190,15 +186,13 @@ echo "🌐 Installing Firefox..."
 sudo apt install -y firefox-esr
 
 
-echo "🧩 Adding Ubuntu Sway Remix PPA packages..."
-sudo apt install -y software-properties-common
-
-# Add Ubuntu Sway Remix PPA (note: this is unofficial on Debian and may require tweaks)
-sudo add-apt-repository -y ppa:samoilov-lex/ubuntu-sway-remix
+echo "🧩 Adding Ubuntu Sway Remix packages manually (Debian-compatible)..."
+echo "deb http://ppa.launchpad.net/samoilov-lex/ubuntu-sway-remix/ubuntu jammy main" | sudo tee /etc/apt/sources.list.d/ubuntu-sway-remix.list
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 1D8A92449CDBFA71
 sudo apt update
 
 # Install matching tools
-sudo apt install -y sway-input-config sway-systemd nwg-drawer nwg-wrapper \
+sudo apt install -y gtkgreet sway-input-config sway-systemd nwg-drawer nwg-wrapper \
   rofi-wayland cliphist bluetuith qt5-style-kvantum yaru-theme-icon yaru-cursor-theme
 
 echo "💻 Optimizing for Dell XPS 9305..."
