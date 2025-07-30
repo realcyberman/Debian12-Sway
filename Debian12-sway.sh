@@ -4,19 +4,23 @@ set -e
 echo "🔧 Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
+echo "📦 Installing build tools (early for meson)..."
+sudo apt install -y meson ninja-build scdoc pkg-config cmake \
+  build-essential wget curl git unzip
+
 echo "📦 Installing core system packages..."
 sudo apt install -y \
   sway waybar foot wofi grim slurp wl-clipboard \
   light pipewire wireplumber pavucontrol \
   thunar thunar-archive-plugin file-roller \
-  lxappearance imv vlc unzip curl git wget \
+  lxappearance imv vlc \
   gtk2-engines-murrine gtk2-engines-pixbuf \
   papirus-icon-theme fonts-noto fonts-noto-color-emoji \
   fonts-noto-cjk fonts-noto-mono xdg-desktop-portal-wlr \
   xdg-desktop-portal file dbus-user-session network-manager \
   policykit-1 systemd-container bluez blueman \
   firmware-iwlwifi intel-media-va-driver \
-  mesa-va-drivers vainfo mesa-utils build-essential
+  mesa-va-drivers vainfo mesa-utils
 
 echo "🔧 Enabling contrib/non-free repos for firmware..."
 sudo sed -i 's/main/main contrib non-free non-free-firmware/g' /etc/apt/sources.list
@@ -57,12 +61,10 @@ sudo ninja -C build install
 cd ~
 rm -rf /tmp/wayland-protocols*
 
-echo "🛠️ Installing mako build dependencies..."
-sudo apt install -y meson ninja-build scdoc pkg-config cmake \
-  libwayland-dev libxkbcommon-dev libpixman-1-dev \
+echo "🧱 Cloning and building mako from source..."
+sudo apt install -y libwayland-dev libxkbcommon-dev libpixman-1-dev \
   libsystemd-dev libdbus-1-dev libpango1.0-dev
 
-echo "🧱 Cloning and building mako from source..."
 git clone https://github.com/emersion/mako.git /tmp/mako
 cd /tmp/mako
 meson setup build
