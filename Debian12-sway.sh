@@ -47,9 +47,9 @@ AutomaticLogin=$USER
 EOF"
 
 echo "🛠️ Installing mako build dependencies..."
-sudo apt install -y meson ninja-build scdoc pkg-config \
-  libwayland-dev libxkbcommon-dev libpixman-1-dev \
-  libsystemd-dev libdbus-1-dev libpango1.0-dev
+sudo apt install -y meson ninja-build scdoc pkg-config cmake \
+  libwayland-dev wayland-protocols libxkbcommon-dev \
+  libpixman-1-dev libsystemd-dev libdbus-1-dev libpango1.0-dev
 
 echo "🧱 Cloning and building mako from source..."
 git clone https://github.com/emersion/mako.git /tmp/mako
