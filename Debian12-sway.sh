@@ -46,10 +46,15 @@ AutomaticLoginEnable=true
 AutomaticLogin=$USER
 EOF"
 
+echo "⬇️ Downloading wayland-protocols 1.32 from Debian Testing..."
+cd /tmp
+wget http://ftp.debian.org/debian/pool/main/w/wayland-protocols/wayland-protocols_1.32-1_all.deb
+sudo dpkg -i wayland-protocols_1.32-1_all.deb
+
 echo "🛠️ Installing mako build dependencies..."
 sudo apt install -y meson ninja-build scdoc pkg-config cmake \
-  libwayland-dev wayland-protocols libxkbcommon-dev \
-  libpixman-1-dev libsystemd-dev libdbus-1-dev libpango1.0-dev
+  libwayland-dev libxkbcommon-dev libpixman-1-dev \
+  libsystemd-dev libdbus-1-dev libpango1.0-dev
 
 echo "🧱 Cloning and building mako from source..."
 git clone https://github.com/emersion/mako.git /tmp/mako
@@ -114,7 +119,7 @@ cp -r /tmp/ubuntu-sway-remix/themes/* ~/.themes/ || true
 cp -r /tmp/ubuntu-sway-remix/icons/* ~/.icons/ || true
 
 echo "🧹 Cleaning up..."
-rm -rf /tmp/ubuntu-sway-remix
+rm -rf /tmp/wayland-protocols_1.32-1_all.deb /tmp/ubuntu-sway-remix
 sudo apt autoremove -y
 
 echo "✅ Installation complete! Reboot to enter Sway via GDM."
