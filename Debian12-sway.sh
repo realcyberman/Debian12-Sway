@@ -51,8 +51,12 @@ bindsym Mod4+shift+e exec swaynag \
 EOF
 
 echo "👤 Creating 'greeter' user for greetd..."
-sudo useradd -m -G video,input,seat -s /bin/bash greeter || true
-sudo passwd -d greeter
+sudo useradd -m -G video,input -s /bin/bash greeter || true
+if id "greeter" &>/dev/null; then
+  sudo passwd -d greeter
+else
+  echo "⚠️ User 'greeter' could not be created."
+fi
 
 echo "🟢 Enabling greetd..."
 sudo systemctl enable greetd
