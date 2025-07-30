@@ -16,7 +16,7 @@ sudo apt install -y \
   xdg-desktop-portal file dbus-user-session network-manager \
   policykit-1 systemd-container bluez blueman \
   firmware-iwlwifi intel-media-va-driver \
-  mesa-va-drivers vainfo glxinfo
+  mesa-va-drivers vainfo mesa-utils
 
 echo "🔧 Enabling contrib/non-free repos for firmware..."
 sudo sed -i 's/main/main contrib non-free non-free-firmware/g' /etc/apt/sources.list
