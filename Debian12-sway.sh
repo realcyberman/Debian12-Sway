@@ -25,17 +25,23 @@ sudo apt install -y sway waybar mako foot wl-clipboard light grim slurp \
     echo "⚠️ Some packages failed to install, please check errors above."
   }
 
+echo "🔧 Checking Git config for SSH rewriting..."
+if git config --global url."git@github.com:".insteadOf >/dev/null; then
+  echo "⚠️ Removing Git global config rewriting HTTPS to SSH to avoid authentication prompts..."
+  git config --global --unset url.git@github.com:.insteadOf
+fi
+
 echo "🎨 Installing Catppuccin themes and GTK theming..."
 mkdir -p ~/.themes ~/.icons ~/.config
 
 cd ~/.themes
 if [ ! -d "catppuccin-gtk" ]; then
-  git clone --depth=1 https://github.com/catppuccin/gtk.git catppuccin-gtk
+  GIT_TERMINAL_PROMPT=0 git clone --depth=1 https://github.com/catppuccin/gtk.git catppuccin-gtk
 fi
 
 cd ~/.icons
 if [ ! -d "catppuccin-icon-theme" ]; then
-  git clone --depth=1 https://github.com/catppuccin/catppuccin-icon-theme.git
+  GIT_TERMINAL_PROMPT=0 git clone --depth=1 https://github.com/catppuccin/catppuccin-icon-theme.git
   cd catppuccin-icon-theme
   ./install.sh || echo "⚠️ Icon theme install script failed."
 fi
@@ -57,7 +63,7 @@ cd ~
 if [ -d "ubuntusway" ]; then
   rm -rf ubuntusway
 fi
-git clone --depth=1 https://github.com/ubuntusway/ubuntusway.git
+GIT_TERMINAL_PROMPT=0 git clone --depth=1 https://github.com/ubuntusway/ubuntusway.git
 cp -r ubuntusway/data/config/* ~/.config/
 rm -rf ubuntusway
 
