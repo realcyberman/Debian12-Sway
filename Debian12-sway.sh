@@ -4,9 +4,9 @@ set -e
 echo "🔧 Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
-echo "📦 Installing build tools (early for meson)..."
+echo "📦 Installing build tools and wayland-scanner early..."
 sudo apt install -y meson ninja-build scdoc pkg-config cmake \
-  build-essential wget curl git unzip
+  build-essential wget curl git unzip libwayland-dev
 
 echo "📦 Installing core system packages..."
 sudo apt install -y \
@@ -62,7 +62,7 @@ cd ~
 rm -rf /tmp/wayland-protocols*
 
 echo "🧱 Cloning and building mako from source..."
-sudo apt install -y libwayland-dev libxkbcommon-dev libpixman-1-dev \
+sudo apt install -y libxkbcommon-dev libpixman-1-dev \
   libsystemd-dev libdbus-1-dev libpango1.0-dev
 
 git clone https://github.com/emersion/mako.git /tmp/mako
