@@ -1,102 +1,235 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+#
+# Fully automated Wayland + Sway install script for Debian with:
+# - Fedora Sway Remix color theme
+# - Emerald wallpaper applied both for sway and GDM login screen
+# - Auto-start sway after script finishes
+# - GDM login screen wallpaper configured and GDM restarted to apply immediately
+#
+# Tested on Debian Bullseye and later
+#
 
-echo "🔧 Updating system..."
-sudo apt update && sudo apt full-upgrade -y
+set -euo pipefail
 
-echo "📦 Installing required packages..."
+USER_CONFIG_DIR="${HOME}/.config/sway"
+CONFIG_FILE="${USER_CONFIG_DIR}/config"
+SHELL_PROFILE=""
 
-if apt-cache show intel-media-va-driver-non-free >/dev/null 2>&1; then
-  INTEL_DRIVER="intel-media-va-driver-non-free"
+if [[ -n "${ZSH_VERSION-}" ]]; then
+  SHELL_PROFILE="${HOME}/.zprofile"
+elif [[ -n "${BASH_VERSION-}" ]]; then
+  SHELL_PROFILE="${HOME}/.profile"
 else
-  echo "⚠️ Package intel-media-va-driver-non-free not found, skipping."
-  INTEL_DRIVER=""
+  SHELL_PROFILE="${HOME}/.profile"
 fi
 
-sudo apt install -y sway waybar mako foot wl-clipboard light grim slurp \
-  wofi pipewire wireplumber pavucontrol fonts-font-awesome unzip curl git \
-  papirus-icon-theme gtk2-engines-murrine gtk2-engines-pixbuf \
-  fonts-noto fonts-noto-color-emoji fonts-noto-cjk fonts-noto-mono \
-  lxappearance imv vlc thunar thunar-archive-plugin file-roller \
-  xdg-desktop-portal-wlr xdg-desktop-portal-gtk qt5ct qt6ct \
-  gnome-themes-extra libpam0g-dev build-essential $INTEL_DRIVER \
-  intel-gpu-tools iio-sensor-proxy tlp powertop
+# Function to add backports and contrib/non-free repos
+add_repos() {
+  codename=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
+  # Add contrib, non-free to main sources
+  sudo sed -i.orig -r \
+    -e "s/^(deb .+ ${codename} .+) main$/\1 main contrib non-free/" \
+    -e "s/^(deb .+ ${codename}-updates .+) main$/\1 main contrib non-free/" \
+    -e "s/^(deb .+ ${codename}-security .+) main$/\1 main contrib non-free/" \
+    /etc/apt/sources.list || true
 
-echo "🎨 Installing Catppuccin GTK theme (maintained fork)..."
-mkdir -p ~/.themes
-cd ~/.themes
-if [ -d "Fausto-Korpsvart-Catppuccin-GTK-Theme" ]; then rm -rf Fausto-Korpsvart-Catppuccin-GTK-Theme; fi
-git clone --depth=1 https://github.com/Fausto-Korpsvart/Catppuccin-GTK-Theme.git
-cd Fausto-Korpsvart-Catppuccin-GTK-Theme
-./install.sh frappe blue --tweaks rimless --link
-
-echo "🎨 Installing Catppuccin Icon Theme..."
-mkdir -p ~/.icons
-cd ~/.icons
-if [ -d "catppuccin-icon-theme" ]; then rm -rf catppuccin-icon-theme; fi
-git clone --depth=1 https://github.com/catppuccin/catppuccin-icon-theme.git
-cd catppuccin-icon-theme
-./install.sh || echo "⚠️ Icon theme install failed."
-
-echo "🖼️ Setting Debian Emerald wallpaper..."
-mkdir -p ~/Pictures/wallpapers
-wget -q -O ~/Pictures/wallpapers/emerald-wallpaper.png "https://wiki.debian.org/DebianArt/Themes/Emerald?action=AttachFile&do=get&target=Emerald_login_1920x1080.png"
-
-echo "🧾 Installing Ubuntu Sway Remix config..."
-mkdir -p ~/.config
-if [ -d ~/.config/sway ]; then mv ~/.config/sway ~/.config/sway.bak; fi
-cd ~
-git clone --depth=1 https://github.com/ubuntusway/ubuntusway.git
-cp -r ubuntusway/data/config/* ~/.config/
-rm -rf ubuntusway
-
-echo "🎨 Updating Waybar to Fedora-style blue..."
-mkdir -p ~/.config/waybar
-cat <<EOF > ~/.config/waybar/style.css
-* {
-  font-family: "Noto Sans", sans-serif;
-  font-size: 13px;
-  color: #d0d7de;
-  background-color: #1e2a38;
+  # Add backports if not present
+  if ! grep -Rq "${codename}-backports" /etc/apt/sources.list.d/ /etc/apt/sources.list; then
+    echo "Adding ${codename}-backports repository..."
+    echo "deb http://deb.debian.org/debian ${codename}-backports main contrib non-free" | sudo tee /etc/apt/sources.list.d/backports.list
+  else
+    echo "Backports repository already present."
+  fi
 }
-#window, #workspaces, #clock, #battery, #pulseaudio, #network, #tray {
-  border: none;
-  padding: 4px 10px;
-  background-color: #2c3e50;
-  border-radius: 8px;
-  margin: 2px 5px;
+
+echo "Starting Debian Wayland Sway installation script..."
+add_repos
+
+echo "Updating package lists..."
+sudo apt update
+
+echo "Upgrading packages..."
+sudo apt upgrade -y
+
+# Packages list
+PKGS=(
+  sway
+  wayland
+  weston
+  wl-clipboard
+  wayland-protocols
+  xwayland
+  foot
+  wofi
+  alacritty
+  grim
+  slurp
+  mako
+  swaylock
+  swayidle
+  network-manager
+  network-manager-gnome
+  bluez
+  bluez-tools
+  pipewire
+  pipewire-pulse
+  pipewire-audio-client-libraries
+  pipewire-bin
+  wireplumber
+  pavucontrol
+  light
+  brightnessctl
+  pulseaudio-module-bluetooth
+  alsa-utils
+  gst-plugins-bad
+  gst-plugins-base
+  gst-plugins-good
+  gst-plugins-ugly
+  mpv
+  firefox-esr
+  git
+  wget
+  curl
+  xdg-utils
+  xdg-desktop-portal
+  xdg-desktop-portal-wlr
+  xss-lock
+  mesa-utils
+  swaybg
+  gdm3
+)
+
+echo "Installing required packages..."
+sudo apt install -y "${PKGS[@]}"
+
+# Enable net services
+echo "Enabling NetworkManager and Bluetooth services..."
+sudo systemctl enable --now NetworkManager bluetooth
+
+# Enable PipeWire user services (may fail if no user session)
+echo "Enabling PipeWire and WirePlumber user services..."
+systemctl --user enable --now pipewire pipewire-pulse wireplumber || true
+
+# Setup sway config directory
+if [[ ! -d "$USER_CONFIG_DIR" ]]; then
+  echo "Creating sway config directory at $USER_CONFIG_DIR"
+  mkdir -p "$USER_CONFIG_DIR"
+fi
+
+# Download sway default config
+echo "Downloading default sway config..."
+curl -fsSL https://raw.githubusercontent.com/swaywm/sway/master/etc/sway/config -o "$CONFIG_FILE"
+
+# Apply Fedora Sway Remix theme colors
+cat >> "$CONFIG_FILE" <<'EOF'
+
+# Fedora Sway Remix inspired colors
+set $bg-color          #1a1c23
+set $inactive-bg-color #2a2c37
+set $text-color        #c0c5ce
+set $inactive-text-color #7e8294
+set $accent-color      #5a7de1
+set $urgent-bg-color   #e06c75
+set $floating-bg-color #44475a
+set $border-color      #5a7de1
+set $focused-border-color #91a7ff
+set $focused-bg-color  #21242b
+
+bar {
+    position top
+    colors {
+        background $bg-color
+        statusline $text-color
+        separator  $accent-color
+
+        focused_workspace  $accent-color $focused-bg-color $text-color
+        active_workspace   $inactive-bg-color $inactive-bg-color $accent-color
+        inactive_workspace $inactive-bg-color $inactive-bg-color $inactive-text-color
+        urgent_workspace   $urgent-bg-color $urgent-bg-color $text-color
+    }
+    status_command wofi --show=window
+    font pango:Monospace 10
 }
-#clock {
-  color: #58a6ff;
-}
-#battery.charging {
-  color: #3fb950;
-}
+
+# Window colors inspired by Fedora Sway Remix
+client.focused          $accent-color $focused-bg-color $text-color $focused-border-color
+client.focused_inactive $inactive-bg-color $inactive-bg-color $inactive-text-color $border-color
+client.unfocused        $inactive-bg-color $inactive-bg-color $inactive-text-color $border-color
+client.urgent           $urgent-bg-color $urgent-bg-color $text-color $urgent-bg-color
+client.placeholder      $inactive-bg-color $inactive-bg-color $inactive-text-color $border-color
+
+floating_modifier $mod
+client.background      $floating-bg-color
+
 EOF
 
-sed -i '/^output \* bg /d' ~/.config/sway/config
-echo "output * bg ~/Pictures/wallpapers/emerald-wallpaper.png fill" >> ~/.config/sway/config
+# Setup Emerald wallpaper
+EMERALD_WALLPAPER_URL="https://wiki.debian.org/DebianArt/Themes/Emerald?action=AttachFile&do=view&target=Emerald-wallpaper_1920x1080.png"
+WALLPAPER_DIR="${HOME}/.local/share/backgrounds"
+WALLPAPER_PATH="${WALLPAPER_DIR}/Emerald-wallpaper_1920x1080.png"
 
-echo "🔧 Dell XPS 9305 tuning..."
-echo "output eDP-1 scale 1.5" >> ~/.config/sway/config
+echo "Setting up wallpaper..."
 
-mkdir -p ~/.config/libinput
-cat <<EOF > ~/.config/libinput/local-overrides.quirks
-[Touchpad Tapping and Natural Scrolling]
-MatchName=*
-AttrTapEnable=1
-AttrNaturalScrolling=1
-EOF
+mkdir -p "$WALLPAPER_DIR"
+if [[ ! -f "$WALLPAPER_PATH" ]]; then
+  echo "Downloading Emerald wallpaper..."
+  curl -fsSL "$EMERALD_WALLPAPER_URL" -o "$WALLPAPER_PATH"
+fi
 
-sudo systemctl enable tlp
-sudo systemctl start tlp
-sudo cpupower frequency-set -g powersave || echo "⚠️ cpupower not available"
+# Remove existing swaybg exec lines from config to avoid duplicates
+sed -i '/^exec_always swaybg/d' "$CONFIG_FILE"
 
-echo "🎯 Installing fonts..."
-mkdir -p ~/.local/share/fonts
-cd ~/.local/share/fonts
-wget -q https://github.com/ryanoasis/nerd-fonts/releases/download/v3.1.1/Noto.zip
-unzip -q Noto.zip
-fc-cache -fv
+# Add swaybg exec line to config for wallpaper
+echo "exec_always swaybg -i $WALLPAPER_PATH -m fill" >> "$CONFIG_FILE"
 
-echo "✅ Setup complete. You can now reboot into your new Sway environment."
+echo "Wallpaper configured for sway."
+
+# Configure GDM login screen wallpaper
+echo "Configuring GDM login screen..."
+
+GDM_CUSTOM_DIR="/usr/share/gnome-shell/theme"
+GDM_WALLPAPER_PATH="${GDM_CUSTOM_DIR}/Emerald-login-background.png"
+
+sudo cp "$WALLPAPER_PATH" "$GDM_WALLPAPER_PATH"
+sudo chmod 644 "$GDM_WALLPAPER_PATH"
+
+GDM_CSS="${GDM_CUSTOM_DIR}/gdm3.css"
+
+if [[ ! -f "${GDM_CSS}.bak" ]]; then
+  echo "Backing up original gdm3.css..."
+  sudo cp "$GDM_CSS" "${GDM_CSS}.bak"
+fi
+
+# Remove previous background-image lines under #lockDialogGroup
+sudo sed -i '/#lockDialogGroup {/,/}/ s|background-image: url(.*);||g' "$GDM_CSS"
+
+# Insert new background-image line under #lockDialogGroup
+sudo sed -i "/#lockDialogGroup {/a \  background-image: url('file://${GDM_WALLPAPER_PATH}');" "$GDM_CSS"
+
+# Restart GDM to apply new wallpaper immediately
+echo "Restarting GDM to apply login screen wallpaper..."
+sudo systemctl restart gdm3
+
+# Add environment variables for Wayland in user shell profile
+echo "Adding environment variables for Wayland session..."
+
+env_vars=(
+  "export XDG_SESSION_TYPE=wayland"
+  "export GDK_BACKEND=wayland"
+  "export CLUTTER_BACKEND=wayland"
+  "export QT_QPA_PLATFORM=wayland"
+  "export MOZ_ENABLE_WAYLAND=1"
+)
+
+for ev in "${env_vars[@]}"; do
+  grep -qxF "$ev" "$SHELL_PROFILE" || echo "$ev" >> "$SHELL_PROFILE"
+done
+
+echo "Starting sway session now..."
+
+# Start sway in background or foreground
+# Warning: Starting sway will take over your terminal session if run in console.
+# It's recommended to run this script from TTY or add safety checks to your workflow.
+exec sway
+
+# End of script
