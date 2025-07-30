@@ -4,7 +4,7 @@ set -e
 echo "🔧 Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
-echo "📦 Installing build tools and wayland-scanner early..."
+echo "📦 Installing build tools and dependencies..."
 sudo apt install -y meson ninja-build scdoc pkg-config cmake \
   build-essential wget curl git unzip libwayland-dev
 
@@ -20,35 +20,44 @@ sudo apt install -y \
   xdg-desktop-portal file dbus-user-session network-manager \
   policykit-1 systemd-container bluez blueman \
   firmware-iwlwifi intel-media-va-driver \
-  mesa-va-drivers vainfo mesa-utils
+  mesa-va-drivers vainfo mesa-utils greetd cargo \
+  libgtk-3-dev libpam0g-dev power-profiles-daemon
 
 echo "🔧 Enabling contrib/non-free repos for firmware..."
 sudo sed -i 's/main/main contrib non-free non-free-firmware/g' /etc/apt/sources.list
 sudo apt update
 sudo apt install -y firmware-linux firmware-linux-nonfree
 
-echo "🖥️ Installing GDM3..."
-sudo apt install -y gdm3
-sudo systemctl enable gdm3
+echo "⬇️ Building and installing gtkgreet..."
+cargo install --locked gtkgreet
+sudo install -Dm755 ~/.cargo/bin/gtkgreet /usr/local/bin/gtkgreet
 
-echo "🧠 Setting default session to Sway..."
-sudo mkdir -p /usr/share/wayland-sessions
-cat <<EOF | sudo tee /usr/share/wayland-sessions/sway.desktop
-[Desktop Entry]
-Name=Sway
-Comment=An i3-compatible Wayland compositor
-Exec=sway
-Type=Application
-DesktopNames=sway
+echo "🔧 Configuring greetd to auto-launch sway..."
+sudo mkdir -p /etc/greetd
+sudo bash -c "cat > /etc/greetd/config.toml" << 'EOF'
+[terminal]
+vt = 1
+
+[default_session]
+command = "sway --config /etc/greetd/sway-config"
+user = "greeter"
 EOF
 
-echo "🔒 Enabling auto-login (optional)..."
-sudo mkdir -p /etc/gdm3
-sudo bash -c "cat <<EOF > /etc/gdm3/custom.conf
-[daemon]
-AutomaticLoginEnable=true
-AutomaticLogin=$USER
-EOF"
+echo "🧩 Creating greetd sway config..."
+sudo bash -c "cat > /etc/greetd/sway-config" << 'EOF'
+exec gtkgreet
+bindsym Mod4+shift+e exec swaynag \
+    -t warning \
+    -m 'Do you really want to exit?' \
+    -b 'Yes' 'loginctl terminate-user $USER'
+EOF
+
+echo "👤 Creating 'greeter' user for greetd..."
+sudo useradd -m -G video,input,seat -s /bin/bash greeter || true
+sudo passwd -d greeter
+
+echo "🟢 Enabling greetd..."
+sudo systemctl enable greetd
 
 echo "⬇️ Downloading and building wayland-protocols 1.32..."
 cd /tmp
@@ -134,7 +143,7 @@ focus_follows_mouse yes
 for_window [class=".*"] border pixel 2
 EOF
 
-echo "🧩 Creating Waybar config..."
+echo "🧩 Creating Waybar config matching Ubuntu Sway Remix..."
 mkdir -p ~/.config/waybar
 cat <<EOF > ~/.config/waybar/config.jsonc
 {
@@ -142,15 +151,15 @@ cat <<EOF > ~/.config/waybar/config.jsonc
   "position": "top",
   "modules-left": ["sway/workspaces"],
   "modules-center": ["clock"],
-  "modules-right": ["pulseaudio", "battery", "network"],
+  "modules-right": ["pulseaudio", "battery", "network", "power-profiles-daemon"],
   "clock": { "format": "%a %b %d, %H:%M" },
   "pulseaudio": { "format": " {volume}%" },
   "battery": { "format": "{capacity}%", "format-charging": " {capacity}%" },
-  "network": { "format": "{ifname}   {signalStrength}%" }
+  "network": { "format": "{ifname}   {signalStrength}%" },
+  "power-profiles-daemon": { "tooltip": true }
 }
 EOF
 
-echo "🧩 Creating Waybar style..."
 cat <<EOF > ~/.config/waybar/style.css
 * {
   font-family: "Noto Sans", sans-serif;
@@ -168,11 +177,15 @@ window {
 #workspaces button.focused {
   background: #306998;
 }
+#power-profiles-daemon {
+  padding: 0 8px;
+  background: #44475a;
+  border-radius: 5px;
+}
 EOF
 
-echo "📦 Installing Flatpak..."
-sudo apt install -y flatpak gnome-software-plugin-flatpak
-sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+echo "🌐 Installing Firefox..."
+sudo apt install -y firefox-esr
 
 echo "💻 Optimizing for Dell XPS 9305..."
 sudo apt install -y tlp thermald
@@ -182,4 +195,4 @@ sudo systemctl start tlp.service
 echo "🧹 Cleaning up..."
 sudo apt autoremove -y
 
-echo "✅ Installation complete! Reboot to enter Sway via GDM."
+echo "✅ Done! Reboot to launch Sway from greetd."
