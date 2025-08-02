@@ -1,61 +1,129 @@
 #!/bin/bash
-# Debian 13 Sway: Ubuntu Sway Remix experience, blue theme & wallpaper, NO Fish shell
+# Debian 13: Auto-generated Sway/Waybar blue Fedora-style setup, no remix repo needed
 
 set -e
 
 echo "🔧 Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
-echo "📦 Installing core Sway packages..."
+echo "📦 Installing Sway, Waybar, blue GTK theme, and all desktop extras..."
 sudo apt install -y sway swaybg swayidle swaylock waybar \
   mako-notifier wofi thunar thunar-archive-plugin foot alacritty \
   lxappearance pavucontrol fuzzel imv \
-  fonts-font-awesome papirus-icon-theme file-roller curl git unzip
-
-echo "🧩 Installing clipboard manager..."
-sudo apt install -y nwg-clipman
+  fonts-font-awesome papirus-icon-theme file-roller curl git unzip \
+  adwaita-gtk-theme nwg-clipman
 
 echo "🔐 Installing greetd (optional, for auto-login to Sway)..."
 sudo apt install -y greetd
 sudo systemctl enable greetd
 
-echo "📁 Fetching Sway Remix configs..."
-mkdir -p ~/.config
-cd /tmp
-rm -rf remix-tmp
-git clone --depth 1 https://github.com/Ubuntu-Sway/Ubuntu-Sway-Remix.git remix-tmp
+# Config folders
+mkdir -p ~/.config/sway ~/.config/waybar ~/.config/mako ~/.config/fuzzel ~/.config/nwg-clipman
 
-echo "🔄 Copying config files..."
-for folder in sway waybar mako fuzzel nwg-clipman; do
-    if [ -d "remix-tmp/usr/share/ubuntu-sway/defaults/$folder" ]; then
-        cp -r "remix-tmp/usr/share/ubuntu-sway/defaults/$folder" ~/.config/
-    else
-        echo "⚠️  Warning: $folder config not found, skipping."
-    fi
-done
+# ---- Sway CONFIG (blue, Fedora-inspired) ----
+cat > ~/.config/sway/config <<'EOF'
+# Sway config, Fedora-inspired blue theme
 
-rm -rf remix-tmp
+set $mod Mod4
+font pango:Noto Sans 10
 
-# ---- THEME SECTION ----
+# Wallpaper
+output * bg ~/.config/sway/wallpaper-blue.jpg fill
 
-# 1. Blue abstract wallpaper (Fedora Sway style, copyright safe)
-echo "🖼️  Downloading blue abstract wallpaper..."
-mkdir -p "$HOME/.config/sway"
-WALLPAPER_URL="https://images.unsplash.com/photo-1506744038136-46273834b3fb?fit=crop&w=1920&q=80"
-WALLPAPER_PATH="$HOME/.config/sway/wallpaper-blue.jpg"
-curl -L "$WALLPAPER_URL" -o "$WALLPAPER_PATH"
-sed -i "s|^\(output \* bg \).*|\1 $WALLPAPER_PATH fill|" ~/.config/sway/config || true
+# Bar
+bar {
+    position top
+    font pango:Noto Sans 10
+    status_command waybar
+    colors {
+        background #19243a
+        statusline #67b0ff
+        focused_workspace #283753 #67b0ff #ffffff
+        inactive_workspace #1e2430 #22314d #7bc6ff
+        urgent_workspace #d72638 #d72638 #ffffff
+    }
+}
 
-# 2. GTK theme: 'Materia-blue'
-echo "🎨 Installing blue GTK theme..."
-sudo apt install -y materia-gtk-theme
+# Keybindings
+bindsym $mod+Return exec foot
+bindsym $mod+d exec fuzzel
+bindsym $mod+Shift+q kill
+bindsym $mod+Shift+e exec "swaymsg exit"
 
-echo "🌐 Setting GTK theme to Materia-blue and icons to Papirus..."
-gsettings set org.gnome.desktop.interface gtk-theme 'Materia-blue' || true
-gsettings set org.gnome.desktop.interface icon-theme 'Papirus' || true
+# Thunar file manager
+bindsym $mod+e exec thunar
 
-# 3. Waybar blue style
-cat > ~/.config/waybar/style.css <<EOF
+# Volume (pipewire)
+bindsym XF86AudioRaiseVolume exec 'pactl set-sink-volume @DEFAULT_SINK@ +5%'
+bindsym XF86AudioLowerVolume exec 'pactl set-sink-volume @DEFAULT_SINK@ -5%'
+bindsym XF86AudioMute exec 'pactl set-sink-mute @DEFAULT_SINK@ toggle'
+
+# Brightness
+bindsym XF86MonBrightnessUp exec "light -A 5"
+bindsym XF86MonBrightnessDown exec "light -U 5"
+
+# Clipboard manager
+exec_always --no-startup-id nwg-clipman
+
+# Notification daemon
+exec_always --no-startup-id mako
+
+# Lockscreen
+bindsym $mod+Shift+l exec swaylock
+
+# Autostart
+exec_always --no-startup-id thunar --daemon
+
+# Gaps and window look
+gaps inner 12
+gaps outer 8
+
+# Floating window decorations (Fedora style)
+for_window [floating] border pixel 4
+
+# Enable touchpad tap-to-click
+input type:touchpad {
+    tap enabled
+}
+
+# DPI fix for HiDPI
+output * scale 1
+
+# End of config
+EOF
+
+# ---- Waybar CONFIG ----
+cat > ~/.config/waybar/config <<'EOF'
+{
+    "layer": "top",
+    "position": "top",
+    "modules-left": ["sway/workspaces", "sway/mode"],
+    "modules-center": ["clock"],
+    "modules-right": ["tray", "pulseaudio", "network", "battery"],
+    "clock": {
+        "format": "{:%a %d %b %H:%M}",
+        "tooltip-format": "{:%Y-%m-%d %H:%M:%S}"
+    },
+    "battery": {
+        "format": "{capacity}% {icon}",
+        "format-charging": "{capacity}% ",
+        "format-plugged": "{capacity}% "
+    },
+    "pulseaudio": {
+        "format": "{volume}% {icon}",
+        "format-bluetooth": "{volume}%  {icon}",
+        "format-muted": ""
+    },
+    "network": {
+        "format-wifi": "{essid} ({signalStrength}%) ",
+        "format-ethernet": "Ethernet ",
+        "format-disconnected": "Disconnected "
+    }
+}
+EOF
+
+# ---- Waybar STYLE (blue) ----
+cat > ~/.config/waybar/style.css <<'EOF'
 * {
   border: none;
   border-radius: 8px;
@@ -86,14 +154,51 @@ window {
 }
 EOF
 
-# 4. Swaybar blue
-sed -i '/^bar {/,/^}/s/background .*/background #19243a/' ~/.config/sway/config || true
-sed -i '/^bar {/,/^}/s/statusline .*/statusline #67b0ff/' ~/.config/sway/config || true
-sed -i '/^bar {/,/^}/s/focused_workspace .*/focused_workspace #283753 #67b0ff #ffffff/' ~/.config/sway/config || true
+# ---- Mako CONFIG (notifications) ----
+cat > ~/.config/mako/config <<'EOF'
+background-color=#22314dFF
+text-color=#e0e8ff
+border-color=#67b0ffFF
+border-radius=8
+border-size=2
+default-timeout=5000
+width=400
+EOF
 
-# ---- END THEME SECTION ----
+# ---- Fuzzel CONFIG (app launcher) ----
+cat > ~/.config/fuzzel/fuzzel.ini <<'EOF'
+[main]
+font=Noto Sans:size=12
+prompt=>
+width=40
+lines=12
+inner-pad=16
+background-color=19243aee
+text-color=67b0ffff
+selection-color=67b0ffbb
+border-width=2
+border-color=67b0ff
+EOF
 
-# Waybar auto-restart: Systemd user unit
+# ---- CLIPMAN CONFIG (nwg-clipman) ----
+cat > ~/.config/nwg-clipman/config.toml <<'EOF'
+# Basic nwg-clipman config
+history-size = 50
+EOF
+
+# ---- WALLPAPER ----
+mkdir -p "$HOME/.config/sway"
+echo "🖼️  Downloading blue abstract wallpaper..."
+WALLPAPER_URL="https://images.unsplash.com/photo-1506744038136-46273834b3fb?fit=crop&w=1920&q=80"
+WALLPAPER_PATH="$HOME/.config/sway/wallpaper-blue.jpg"
+curl -L "$WALLPAPER_URL" -o "$WALLPAPER_PATH"
+
+# ---- GTK THEME ----
+echo "🌐 Setting GTK theme to Adwaita and icons to Papirus..."
+gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita' || true
+gsettings set org.gnome.desktop.interface icon-theme 'Papirus' || true
+
+# ---- WAYBAR AUTOSTART SYSTEMD USER UNIT ----
 echo "🛠️  Creating Waybar auto-restart systemd unit..."
 mkdir -p ~/.config/systemd/user
 cat > ~/.config/systemd/user/waybar-restart.service <<EOF
@@ -109,4 +214,4 @@ EOF
 systemctl --user daemon-reload
 systemctl --user enable --now waybar-restart.service
 
-echo "✅ All done! Log out and into Sway (or reboot) to enjoy your blue, Remix-style desktop. No fish shell setup included."
+echo "✅ All done! Log out and into Sway (or reboot) to enjoy your blue, Fedora-inspired Sway desktop."
