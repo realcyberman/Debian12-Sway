@@ -40,6 +40,7 @@ rm -rf remix-tmp
 
 # 1. Blue abstract wallpaper (Fedora Sway style, copyright safe)
 echo "🖼️  Downloading blue abstract wallpaper..."
+mkdir -p "$HOME/.config/sway"
 WALLPAPER_URL="https://images.unsplash.com/photo-1506744038136-46273834b3fb?fit=crop&w=1920&q=80"
 WALLPAPER_PATH="$HOME/.config/sway/wallpaper-blue.jpg"
 curl -L "$WALLPAPER_URL" -o "$WALLPAPER_PATH"
