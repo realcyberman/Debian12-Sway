@@ -1,17 +1,17 @@
 #!/bin/bash
-# Debian 13: Auto-generated Sway/Waybar blue Fedora-style setup, no remix repo needed
+# Debian 13: Clean Sway/Waybar blue Fedora-style setup, no remix repo needed
 
 set -e
 
 echo "🔧 Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
-echo "📦 Installing Sway, Waybar, Adwaita GTK theme, and all desktop extras..."
+echo "📦 Installing Sway, Waybar, Yaru blue GTK theme, and all desktop extras..."
 sudo apt install -y sway swaybg swayidle swaylock waybar \
   mako-notifier wofi thunar thunar-archive-plugin foot alacritty \
   lxappearance pavucontrol fuzzel imv \
   fonts-font-awesome papirus-icon-theme file-roller curl git unzip \
-  adwaita-gtk-theme nwg-clipman
+  nwg-clipman yaru-theme-gtk
 
 echo "🔐 Installing greetd (optional, for auto-login to Sway)..."
 sudo apt install -y greetd
@@ -194,8 +194,8 @@ WALLPAPER_PATH="$HOME/.config/sway/wallpaper-blue.jpg"
 curl -L "$WALLPAPER_URL" -o "$WALLPAPER_PATH"
 
 # ---- GTK THEME ----
-echo "🌐 Setting GTK theme to Adwaita and icons to Papirus..."
-gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita' || true
+echo "🌐 Setting GTK theme to Yaru-blue and icons to Papirus..."
+gsettings set org.gnome.desktop.interface gtk-theme 'Yaru-blue' || true
 gsettings set org.gnome.desktop.interface icon-theme 'Papirus' || true
 
 # ---- WAYBAR AUTOSTART SYSTEMD USER UNIT ----
