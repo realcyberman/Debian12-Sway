@@ -22,6 +22,7 @@ sudo systemctl enable greetd
 echo "📁 Fetching Sway Remix configs..."
 mkdir -p ~/.config
 cd /tmp
+rm -rf remix-tmp
 git clone --depth 1 https://github.com/Ubuntu-Sway/Ubuntu-Sway-Remix.git remix-tmp
 
 echo "🔄 Copying config files..."
