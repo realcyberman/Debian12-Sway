@@ -6,7 +6,7 @@ set -e
 echo "🔧 Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
-echo "📦 Installing Sway, Waybar, blue GTK theme, and all desktop extras..."
+echo "📦 Installing Sway, Waybar, Adwaita GTK theme, and all desktop extras..."
 sudo apt install -y sway swaybg swayidle swaylock waybar \
   mako-notifier wofi thunar thunar-archive-plugin foot alacritty \
   lxappearance pavucontrol fuzzel imv \
