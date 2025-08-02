@@ -1,205 +1,188 @@
 #!/bin/bash
+# Debian 13 Sway: Ubuntu Sway Remix experience, blue theme, fish shell with CachyOS config
+
 set -e
 
 echo "🔧 Updating system..."
 sudo apt update && sudo apt full-upgrade -y
 
-echo "📦 Installing build tools and dependencies..."
-sudo apt install -y meson ninja-build scdoc pkg-config cmake \
-  build-essential wget curl git unzip libwayland-dev
+echo "📦 Installing core Sway packages..."
+sudo apt install -y sway swaybg swayidle swaylock waybar \
+  mako wofi thunar thunar-archive-plugin foot alacritty \
+  lxappearance pavucontrol fuzzel imv \
+  fonts-font-awesome papirus-icon-theme file-roller curl git unzip
 
-echo "📦 Installing core system packages..."
-sudo apt install -y \
-  sway waybar foot wofi grim slurp wl-clipboard \
-  light pipewire wireplumber pavucontrol \
-  thunar thunar-archive-plugin file-roller \
-  lxappearance imv vlc \
-  gtk2-engines-murrine gtk2-engines-pixbuf \
-  papirus-icon-theme fonts-noto fonts-noto-color-emoji \
-  fonts-noto-cjk fonts-noto-mono xdg-desktop-portal-wlr \
-  xdg-desktop-portal file dbus-user-session network-manager \
-  policykit-1 systemd-container bluez blueman \
-  firmware-iwlwifi intel-media-va-driver \
-  mesa-va-drivers vainfo mesa-utils greetd cargo \
-  libgtk-3-dev libpam0g-dev power-profiles-daemon
+echo "🧩 Installing clipboard manager..."
+sudo apt install -y nwg-clipman
 
-echo "🔧 Enabling contrib/non-free repos for firmware..."
-sudo sed -i 's/main/main contrib non-free non-free-firmware/g' /etc/apt/sources.list
-sudo apt update
-sudo apt install -y firmware-linux firmware-linux-nonfree
-
-# gtkgreet will be installed from the PPA below
-
-echo "🔧 Configuring greetd to auto-launch sway..."
-sudo mkdir -p /etc/greetd
-sudo bash -c "cat > /etc/greetd/config.toml" << 'EOF'
-[terminal]
-vt = 1
-
-[default_session]
-command = "sway --config /etc/greetd/sway-config"
-user = "greeter"
-EOF
-
-echo "🧩 Creating greetd sway config..."
-sudo bash -c "cat > /etc/greetd/sway-config" << 'EOF'
-exec gtkgreet
-bindsym Mod4+shift+e exec swaynag \
-    -t warning \
-    -m 'Do you really want to exit?' \
-    -b 'Yes' 'loginctl terminate-user $USER'
-EOF
-
-echo "👤 Creating 'greeter' user for greetd..."
-sudo useradd -m -G video,input,seat -s /bin/bash greeter || true
-sudo passwd -d greeter
-
-echo "🟢 Enabling greetd..."
+echo "🔐 Installing greetd (optional, for auto-login to Sway)..."
+sudo apt install -y greetd
 sudo systemctl enable greetd
 
-echo "⬇️ Downloading and building wayland-protocols 1.32..."
+echo "🐟 Installing Fish shell and Starship prompt..."
+sudo apt install -y fish starship
+
+echo "📦 Installing fish plugins: syntax highlighting and autosuggestions..."
+if ! command -v fisher &>/dev/null; then
+  fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher"
+fi
+fish -c "fisher install jorgebucaran/fish-autosuggestions"
+fish -c "fisher install IlanCosman/tide@v6" # Tide: Modern, pretty prompt
+
+# Make fish the default shell for your user
+echo "🔄 Setting Fish as the default shell for $USER..."
+chsh -s /usr/bin/fish
+
+echo "📝 Applying CachyOS-style Fish config with Starship prompt and useful aliases..."
+
+mkdir -p ~/.config/fish
+
+cat > ~/.config/fish/config.fish <<'EOF'
+# CachyOS / Starship Fish config for Debian
+set -g theme_display_user yes
+set -g theme_display_hostname yes
+set -g theme_display_git yes
+set -g theme_display_virtualenv yes
+
+# Use starship for prompt
+starship init fish | source
+
+# Autosuggestions and syntax highlighting enabled via fisher
+
+# Useful aliases
+alias ls='ls --color=auto'
+alias ll='ls -lah --color=auto'
+alias la='ls -A --color=auto'
+alias grep='grep --color=auto'
+alias update='sudo apt update && sudo apt upgrade'
+alias v='nvim'
+alias ip='ip -color'
+
+# Colorful man pages
+set -gx LESS_TERMCAP_mb (printf '\e[1;31m')
+set -gx LESS_TERMCAP_md (printf '\e[1;36m')
+set -gx LESS_TERMCAP_me (printf '\e[0m')
+set -gx LESS_TERMCAP_se (printf '\e[0m')
+set -gx LESS_TERMCAP_so (printf '\e[1;44;33m')
+set -gx LESS_TERMCAP_ue (printf '\e[0m')
+set -gx LESS_TERMCAP_us (printf '\e[1;32m')
+
+# Add ~/.local/bin to PATH
+set -Ua fish_user_paths $HOME/.local/bin
+EOF
+
+# Add Starship config for nice prompt
+mkdir -p ~/.config
+cat > ~/.config/starship.toml <<'EOF'
+# CachyOS-inspired Starship prompt
+format = """
+[┌─────────────────────────────────](bold blue)
+[│](bold blue)$all
+[└─](bold blue)$character
+"""
+
+[directory]
+style = "cyan"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[git_branch]
+style = "bold yellow"
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold yellow)"
+EOF
+
+# Sway configs and theming as before...
+
+echo "📁 Fetching Sway Remix configs..."
+mkdir -p ~/.config
 cd /tmp
-wget https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.32/wayland-protocols-1.32.tar.gz
-tar -xzf wayland-protocols-1.32.tar.gz
-cd wayland-protocols-1.32
-meson setup build
-ninja -C build
-sudo ninja -C build install
-cd ~
-rm -rf /tmp/wayland-protocols*
+git clone --depth 1 https://github.com/Ubuntu-Sway/Ubuntu-Sway-Remix.git remix-tmp
 
-echo "🧱 Cloning and building mako from source..."
-sudo apt install -y libxkbcommon-dev libpixman-1-dev \
-  libsystemd-dev libdbus-1-dev libpango1.0-dev
+echo "🔄 Copying config files..."
+cp -r remix-tmp/etc/skel/.config/sway ~/.config/
+cp -r remix-tmp/etc/skel/.config/waybar ~/.config/
+cp -r remix-tmp/etc/skel/.config/mako ~/.config/
+cp -r remix-tmp/etc/skel/.config/fuzzel ~/.config/
+cp -r remix-tmp/etc/skel/.config/nwg-clipman ~/.config/
 
-git clone https://github.com/emersion/mako.git /tmp/mako
-cd /tmp/mako
-meson setup build
-ninja -C build
-sudo ninja -C build install
-cd ~
-rm -rf /tmp/mako
+rm -rf remix-tmp
 
-echo "🎨 Creating Wofi theme..."
-mkdir -p ~/.config/wofi
-cat <<EOF > ~/.config/wofi/style.css
-window {
-    margin: 0px;
-    border: 2px solid #306998;
-    background-color: #1e1e2e;
-}
-#input {
-    margin: 5px;
-    border: none;
-    background-color: #313244;
-    color: #ffffff;
-}
-#entry {
-    padding: 5px;
-    margin: 2px;
-    border: none;
-    background-color: transparent;
-    color: #ffffff;
-}
-#entry:selected {
-    background-color: #306998;
-    color: #ffffff;
-}
-EOF
+# ---- THEME SECTION ----
 
-echo "🎛 Configuring GTK theme..."
-mkdir -p ~/.config/gtk-3.0
-cat <<EOF > ~/.config/gtk-3.0/settings.ini
-[Settings]
-gtk-theme-name=Adwaita
-gtk-icon-theme-name=Papirus
-gtk-font-name=Noto Sans 10
-EOF
+# 1. Blue abstract wallpaper (Fedora Sway style, copyright safe)
+echo "🖼️  Downloading blue abstract wallpaper..."
+WALLPAPER_URL="https://images.unsplash.com/photo-1506744038136-46273834b3fb?fit=crop&w=1920&q=80"
+WALLPAPER_PATH="$HOME/.config/sway/wallpaper-blue.jpg"
+curl -L "$WALLPAPER_URL" -o "$WALLPAPER_PATH"
+sed -i "s|^\(output \* bg \).*|\1 $WALLPAPER_PATH fill|" ~/.config/sway/config
 
-echo "🖼 Setting Debian wallpaper..."
-mkdir -p ~/Pictures
-wget -O ~/Pictures/debian-wallpaper.jpg "https://wiki.debian.org/DebianArt/Themes/Emerald?action=AttachFile&do=get&target=Emerald_login_1920x1080.png"
+# 2. GTK theme: 'Materia-blue'
+echo "🎨 Installing blue GTK theme..."
+sudo apt install -y materia-gtk-theme
 
-echo "🧩 Creating Sway config..."
-mkdir -p ~/.config/sway
-cat <<EOF > ~/.config/sway/config
-set \$mod Mod4
+echo "🌐 Setting GTK theme to Materia-blue and icons to Papirus..."
+gsettings set org.gnome.desktop.interface gtk-theme 'Materia-blue' || true
+gsettings set org.gnome.desktop.interface icon-theme 'Papirus' || true
 
-output * bg ~/Pictures/debian-wallpaper.jpg fill
-
-exec mako
-exec waybar
-
-bindsym \$mod+Return exec foot
-bindsym \$mod+d exec wofi --show drun
-bindsym \$mod+q kill
-bindsym \$mod+Shift+e exit
-
-floating_modifier \$mod
-focus_follows_mouse yes
-
-for_window [class=".*"] border pixel 2
-EOF
-
-echo "🧩 Creating Waybar config matching Ubuntu Sway Remix..."
-mkdir -p ~/.config/waybar
-cat <<EOF > ~/.config/waybar/config.jsonc
-{
-  "layer": "top",
-  "position": "top",
-  "modules-left": ["sway/workspaces"],
-  "modules-center": ["clock"],
-  "modules-right": ["pulseaudio", "battery", "network", "power-profiles-daemon"],
-  "clock": { "format": "%a %b %d, %H:%M" },
-  "pulseaudio": { "format": " {volume}%" },
-  "battery": { "format": "{capacity}%", "format-charging": " {capacity}%" },
-  "network": { "format": "{ifname}   {signalStrength}%" },
-  "power-profiles-daemon": { "tooltip": true }
-}
-EOF
-
-cat <<EOF > ~/.config/waybar/style.css
+# 3. Waybar blue style
+cat > ~/.config/waybar/style.css <<EOF
 * {
-  font-family: "Noto Sans", sans-serif;
-  font-size: 14px;
-  color: white;
+  border: none;
+  border-radius: 8px;
+  font-family: "Noto Sans", "FontAwesome", sans-serif;
+  font-size: 15px;
+  min-height: 0;
 }
 window {
-  background-color: #1e1e2e;
-}
-#workspaces button {
-  padding: 5px;
-  border: none;
   background: transparent;
 }
-#workspaces button.focused {
-  background: #306998;
-}
-#power-profiles-daemon {
+#workspaces button {
+  background: #1e2430;
+  color: #67b0ff;
+  border-radius: 8px;
+  margin: 2px;
   padding: 0 8px;
-  background: #44475a;
-  border-radius: 5px;
+}
+#workspaces button.focused {
+  background: #283753;
+  color: #e0e8ff;
+}
+#mode, #battery, #clock, #pulseaudio, #tray, #network {
+  background: #22314d;
+  color: #7bc6ff;
+  border-radius: 8px;
+  margin: 2px;
+  padding: 0 8px;
 }
 EOF
 
-echo "🌐 Installing Firefox..."
-sudo apt install -y firefox-esr
+# 4. Swaybar blue
+sed -i '/^bar {/,/^}/s/background .*/background #19243a/' ~/.config/sway/config
+sed -i '/^bar {/,/^}/s/statusline .*/statusline #67b0ff/' ~/.config/sway/config
+sed -i '/^bar {/,/^}/s/focused_workspace .*/focused_workspace #283753 #67b0ff #ffffff/' ~/.config/sway/config
 
+# ---- END THEME SECTION ----
 
-echo "🧩 Adding Ubuntu Sway Remix packages manually (Debian-compatible)..."
-echo "deb http://ppa.launchpad.net/samoilov-lex/ubuntu-sway-remix/ubuntu jammy main" | sudo tee /etc/apt/sources.list.d/ubuntu-sway-remix.list
-sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 1D8A92449CDBFA71
-sudo apt update
+# Waybar auto-restart: Systemd user unit
+echo "🛠️  Creating Waybar auto-restart systemd unit..."
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/waybar-restart.service <<EOF
+[Unit]
+Description=Waybar auto-restart
 
-# Install matching tools
+[Service]
+Type=simple
+ExecStart=/usr/bin/waybar
+Restart=always
+EOF
 
-echo "💻 Optimizing for Dell XPS 9305..."
+systemctl --user daemon-reload
+systemctl --user enable --now waybar-restart.service
 
-sudo apt install -y tlp thermald
-sudo systemctl enable tlp.service
-sudo systemctl start tlp.service
-
-echo "🧹 Cleaning up..."
-sudo apt autoremove -y
-
-echo "✅ Done! Reboot to launch Sway from greetd."
+echo "✅ All done! Reboot or log in to Sway. Next terminal will use Fish with CachyOS/Starship polish."
+echo
+echo "If you see prompt errors, run 'fish' manually once to let plugins finish installing."
